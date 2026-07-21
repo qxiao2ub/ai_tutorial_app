@@ -1,0 +1,13 @@
+{
+  "note": "The app seeds richer demo quiz data into SQLite on first run. This file shows the expected shape.",
+  "fields": [
+    "lecture_id",
+    "subject",
+    "timestamp_seconds",
+    "difficulty",
+    "question",
+    "options",
+    "correct_answer",
+    "explanation"
+  ]
+}
