@@ -1,5 +1,8 @@
 # Anish AI Tutorial App
 
+**Author:** Anish Khandalkar  
+**Mentor:** Dr. Qingyang Xiao
+
 A Colab-friendly, GitHub-ready Streamlit prototype for a single-lecturer tutorial platform where **Anish** uploads lecture recordings, students watch videos, answer checkpoint quizzes, complete surveys, play reward-based mini-games, sign up for email/SMS updates, and message Anish for lecture help.
 
 This repository is designed as a working educational MVP, not a production-grade LMS. Before using it with real students, add proper authentication, role-based permissions, consent workflows, encrypted storage for personal information, institutional privacy review, and an approved email/SMS provider.
@@ -82,6 +85,12 @@ The app can collect names, emails, phone numbers, watch time, quiz answers, surv
 - Least-privilege admin access
 - Audit logs
 - Secure SMS/email opt-in and opt-out handling
+
+## Project credits
+
+- **Author and lecturer:** Anish Khandalkar
+- **Mentor:** Dr. Qingyang Xiao
+
 
 ## Production roadmap
 

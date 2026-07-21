@@ -15,7 +15,7 @@ from src.ai_models import (
     train_all_models,
 )
 from src.bandit import bandit_summary, choose_arm, ensure_bandit_arms, update_arm
-from src.config import ADMIN_PASSCODE, APP_NAME, LECTURER_NAME
+from src.config import ADMIN_PASSCODE, APP_NAME, AUTHOR_NAME, LECTURER_NAME, MENTOR_NAME
 from src.database import (
     add_game_event,
     add_lecture,
@@ -59,8 +59,13 @@ conn = get_conn()
 
 st.title("🎓 Anish AI Tutorial App")
 st.caption("A Streamlit MVP for lecture videos, checkpoint quizzes, surveys, mini-games, rewards, messaging, and AI learning analytics.")
+st.markdown(f"**Author:** {AUTHOR_NAME} &nbsp;&nbsp; | &nbsp;&nbsp; **Mentor:** {MENTOR_NAME}")
 
 with st.sidebar:
+    st.markdown("### 🎓 Anish AI Tutorial App")
+    st.markdown(f"**Author:** {AUTHOR_NAME}")
+    st.markdown(f"**Mentor:** {MENTOR_NAME}")
+    st.divider()
     st.header("Navigation")
     role = st.radio(
         "Choose a workspace",
