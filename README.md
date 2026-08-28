@@ -25,6 +25,22 @@ This repository is designed as a working educational MVP, not a production-grade
   - scikit-learn neural-network classifier
   - epsilon-greedy reinforcement-learning bandit for activity recommendations
 
+## Deep-space UI integration
+
+This version integrates the visual direction from the supplied **quantum-physics-tutoring-ui** package into the Streamlit application itself. The React/Tailwind reference design was translated to native Streamlit layout + CSS so there is **one deployable Streamlit app**, rather than a separate frontend that Streamlit Community Cloud cannot serve directly.
+
+Integrated design elements include:
+
+- deep-space navy dashboard theme
+- cyan/violet AI accents and glow treatments
+- branded author/mentor identity in the sidebar and header
+- responsive learning-path hero and feature cards
+- dark technical navigation, tabs, forms, metrics, tables, and expanders
+- student rank/reward display driven by existing reward points
+- custom styling for Lecturer/Admin, AI Analytics Lab, and Project README workspaces
+
+The supplied visual assets are retained under `assets/ui/`, and integration notes are in `ui_reference/README.md`. No Node/Vite build is required for deployment.
+
 ## Quick start locally
 
 ```bash
@@ -46,32 +62,40 @@ export ANISH_ADMIN_PASSCODE="your-strong-passcode"
 
 Open the companion notebook `Anish_AI_Tutorial_App_Colab.ipynb` provided with the downloadable artifacts, run the setup cells, and launch Streamlit through the localtunnel cell. Colab is useful for development demos, but it is not a permanent hosting platform.
 
-## GitHub deployment path
+## Deploy on Streamlit Community Cloud
 
-1. Unzip this folder.
-2. Create a new GitHub repository.
-3. Commit these files.
-4. Deploy with Streamlit Community Cloud or another hosting platform.
-5. Replace SQLite with a managed database for production.
-6. Add real user authentication and privacy controls.
+1. Unzip this repository and upload/commit the **contents of this folder** to GitHub.
+2. In Streamlit Community Cloud, create a new app and select your GitHub repository/branch.
+3. Set the main file path to **`streamlit_app.py`**.
+4. Optional but recommended: add `ANISH_ADMIN_PASSCODE` in the app's Secrets/settings instead of using the demo default.
+5. Deploy. Streamlit will install the Python packages from `requirements.txt` and apply `.streamlit/config.toml` automatically.
+6. For production use, replace local SQLite/upload storage with persistent managed services and add real authentication/privacy controls.
+
+This repository intentionally has **no required frontend build step**. The supplied React UI was translated into the Streamlit layer so Community Cloud can run the app directly.
 
 ## Project structure
 
 ```text
-anish_ai_tutorial_app/
-  streamlit_app.py          # Main Streamlit user interface
+ai_tutorial_app/
+  streamlit_app.py          # Main Streamlit entry point
   requirements.txt          # Python dependencies
   README.md                 # Project guide
+  .streamlit/
+    config.toml             # Deep-space theme + Community Cloud config
+  assets/ui/                # Visual assets from the supplied UI package
   data/                     # Seed JSON and local SQLite database location
   uploads/                  # Uploaded lecture videos during development
+  ui_reference/
+    README.md               # How the supplied React UI was adapted
   src/
     ai_models.py            # ML, DNN-style MLP, and analytics functions
     bandit.py               # Reinforcement learning recommendation bandit
     config.py               # Paths and settings
     database.py             # SQLite schema and data-access functions
+    ui_theme.py             # Streamlit deep-space UI/CSS components
     utils.py                # Helper functions
   tests/
-    test_smoke.py           # Basic import and database smoke test
+    test_smoke.py           # Basic database/AI smoke test
 ```
 
 ## Data and privacy notes

@@ -15,7 +15,7 @@ from src.ai_models import (
     train_all_models,
 )
 from src.bandit import bandit_summary, choose_arm, ensure_bandit_arms, update_arm
-from src.config import ADMIN_PASSCODE, APP_NAME, AUTHOR_NAME, LECTURER_NAME, MENTOR_NAME
+from src.config import ADMIN_PASSCODE, APP_NAME, LECTURER_NAME
 from src.database import (
     add_game_event,
     add_lecture,
@@ -39,6 +39,13 @@ from src.database import (
     update_message_status,
 )
 from src.utils import from_json
+from src.ui_theme import (
+    inject_theme,
+    render_app_header,
+    render_sidebar_identity,
+    render_student_hero,
+    render_workspace_banner,
+)
 
 
 st.set_page_config(page_title=APP_NAME, page_icon="🎓", layout="wide")
@@ -56,23 +63,18 @@ def get_conn():
 
 conn = get_conn()
 
-
-st.title("🎓 Anish AI Tutorial App")
-st.caption("A Streamlit MVP for lecture videos, checkpoint quizzes, surveys, mini-games, rewards, messaging, and AI learning analytics.")
-st.markdown(f"**Author:** {AUTHOR_NAME} &nbsp;&nbsp; | &nbsp;&nbsp; **Mentor:** {MENTOR_NAME}")
+inject_theme()
+render_app_header()
 
 with st.sidebar:
-    st.markdown("### 🎓 Anish AI Tutorial App")
-    st.markdown(f"**Author:** {AUTHOR_NAME}")
-    st.markdown(f"**Mentor:** {MENTOR_NAME}")
-    st.divider()
-    st.header("Navigation")
+    render_sidebar_identity()
+    st.markdown("### Navigation")
     role = st.radio(
         "Choose a workspace",
         ["Student", f"{LECTURER_NAME} Lecturer/Admin", "AI Analytics Lab", "Project README"],
     )
     st.divider()
-    st.caption("Prototype note: replace demo passcode, SQLite, and manual video tracking before real deployment.")
+    st.caption("Deep-space dashboard UI adapted from the supplied tutoring UI package. Prototype note: replace demo passcode, SQLite, and manual video tracking before real deployment.")
 
 
 def student_login() -> str | None:
@@ -265,9 +267,16 @@ def render_signup(student_id: str | None = None) -> None:
 
 
 def student_workspace() -> None:
+    render_workspace_banner(
+        "Student Learning Path",
+        "Your adaptive learning dashboard",
+        "Move between Anish's lectures, checkpoint quizzes, mini-games, surveys, direct messages, and personalized AI recommendations.",
+    )
     student_id = student_login()
     if not student_id:
         return
+    rewards = get_rewards(conn, student_id)
+    render_student_hero(st.session_state.get("student_name", "Student"), int(rewards.get("points", 0)))
     col1, col2 = st.columns([1, 3])
     with col1:
         show_rewards(student_id)
@@ -443,7 +452,11 @@ def admin_ai_insights() -> None:
 
 
 def admin_workspace() -> None:
-    st.subheader(f"{LECTURER_NAME} Lecturer/Admin workspace")
+    render_workspace_banner(
+        "Lecturer Command Center",
+        f"{LECTURER_NAME} Lecturer / Admin workspace",
+        "Upload lecture recordings, build checkpoint assessments, review student messages, manage communications, and monitor learning analytics.",
+    )
     passcode = st.text_input("Admin passcode", type="password")
     if passcode != ADMIN_PASSCODE:
         st.info("Enter the admin passcode. Demo default is `change-me`; set ANISH_ADMIN_PASSCODE before sharing.")
@@ -462,7 +475,11 @@ def admin_workspace() -> None:
 
 
 def ai_lab_workspace() -> None:
-    st.subheader("AI Analytics Lab")
+    render_workspace_banner(
+        "AI & Technology",
+        "AI Analytics Lab",
+        "Explore machine learning, neural-network modeling, strengths/weakness analysis, engagement signals, and reinforcement-learning activity recommendations.",
+    )
     dataset = build_engagement_dataset(conn)
     if dataset.empty:
         st.info("Use the app first to generate watch, quiz, survey, and game data.")
@@ -487,7 +504,11 @@ def ai_lab_workspace() -> None:
 
 
 def readme_workspace() -> None:
-    st.subheader("Project README")
+    render_workspace_banner(
+        "Project Documentation",
+        "Architecture, workflow & deployment",
+        "Review the application scope, AI pipeline, privacy notes, project structure, and Streamlit Community Cloud deployment steps.",
+    )
     readme_path = Path(__file__).parent / "README.md"
     st.markdown(readme_path.read_text(encoding="utf-8"))
 
