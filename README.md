@@ -7,6 +7,24 @@ A Colab-friendly, GitHub-ready Streamlit prototype for a single-lecturer tutoria
 
 This repository is designed as a working educational MVP, not a production-grade LMS. Before using it with real students, add proper authentication, role-based permissions, consent workflows, encrypted storage for personal information, institutional privacy review, and an approved email/SMS provider.
 
+## Cumulative app-usage counter
+
+The Streamlit UI shows a cumulative **App uses** number at the top of every workspace/page. It increments once when a new Streamlit session starts, so normal widget reruns do not artificially inflate the count.
+
+This counter intentionally does **not** use the SQLite database. It uses a small external counter service so the number can survive Streamlit Community Cloud restarts. The project defaults to Abacus, a public key-free counter API; the code also lets you override the counter base URL, namespace, key, timeout, and display floor through environment variables. The service is external to the app database and should be treated as a simple public usage counter rather than security or billing data.
+
+Environment variables:
+
+```text
+ANISH_COUNTER_API_BASE=https://abacus.jasoncameron.dev
+ANISH_COUNTER_NAMESPACE=anish-ai-tutorial-6f4b2c9d
+ANISH_COUNTER_KEY=total-app-visits
+ANISH_COUNTER_TIMEOUT=3
+ANISH_COUNTER_DISPLAY_FLOOR=1
+```
+
+If the counter service is temporarily unreachable, the app falls back to a visible floor of **1** rather than showing 0. The actual persistent cumulative total resumes automatically when the service becomes reachable again.
+
 ## What is included
 
 - Streamlit app with student and lecturer/admin modes

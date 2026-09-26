@@ -16,3 +16,21 @@ def test_database_and_models_smoke():
         results = train_all_models(dataset)
         assert "mastery_dnn_mlp" in results
         conn.close()
+
+
+def test_usage_counter_never_returns_zero_on_service_failure(monkeypatch):
+    from src import usage_counter
+
+    monkeypatch.setattr(usage_counter, "_request_json", lambda url: None)
+    count, remote_ok = usage_counter.increment_visit()
+    assert count >= 1
+    assert remote_ok is False
+
+
+def test_usage_counter_floor_and_value_parsing(monkeypatch):
+    from src import usage_counter
+
+    monkeypatch.setattr(usage_counter, "_request_json", lambda url: {"value": 17})
+    count, remote_ok = usage_counter.increment_visit()
+    assert count == 17
+    assert remote_ok is True

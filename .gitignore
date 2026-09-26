@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+.streamlit/secrets.toml
+data/app.db
+uploads/*.mp4
+uploads/*.mov
+uploads/*.m4v
+communications_outbox.csv
+.DS_Store

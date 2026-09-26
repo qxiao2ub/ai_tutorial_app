@@ -39,6 +39,7 @@ from src.database import (
     update_message_status,
 )
 from src.utils import from_json
+from src.usage_counter import increment_visit
 from src.ui_theme import (
     inject_theme,
     render_app_header,
@@ -63,8 +64,28 @@ def get_conn():
 
 conn = get_conn()
 
+# Count one visit per Streamlit session, not once per widget rerun.
+if "usage_counted" not in st.session_state:
+    visit_count, remote_ok = increment_visit()
+    st.session_state["usage_counted"] = True
+    st.session_state["usage_count"] = visit_count
+    st.session_state["usage_counter_remote_ok"] = remote_ok
+else:
+    visit_count = int(st.session_state.get("usage_count", 1))
+    remote_ok = bool(st.session_state.get("usage_counter_remote_ok", False))
+
 inject_theme()
 render_app_header()
+
+# Global usage counter: visible regardless of the selected workspace/page.
+metric_col, note_col = st.columns([1, 3])
+with metric_col:
+    st.metric("👥 App uses", f"{visit_count:,}")
+with note_col:
+    if remote_ok:
+        st.caption("Cumulative app visits • one increment per new Streamlit session • persistent outside the app database")
+    else:
+        st.caption("Cumulative visit counter is temporarily unavailable; the display is kept at a minimum of 1 so it never shows 0.")
 
 with st.sidebar:
     render_sidebar_identity()
@@ -74,7 +95,7 @@ with st.sidebar:
         ["Student", f"{LECTURER_NAME} Lecturer/Admin", "AI Analytics Lab", "Project README"],
     )
     st.divider()
-    st.caption("Deep-space dashboard UI adapted from the supplied tutoring UI package. Prototype note: replace demo passcode, SQLite, and manual video tracking before real deployment.")
+    st.caption("Deep-space dashboard UI adapted from the supplied tutoring UI package. Usage counter is external/no-database and counts one visit per Streamlit session. Prototype note: replace demo passcode, SQLite, and manual video tracking before real deployment.")
 
 
 def student_login() -> str | None:
