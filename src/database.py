@@ -137,6 +137,7 @@ def init_db(conn: sqlite3.Connection) -> None:
             difficulty TEXT DEFAULT 'medium',
             score REAL DEFAULT 0,
             reward_points INTEGER DEFAULT 0,
+            elapsed_seconds INTEGER DEFAULT 0,
             created_at TEXT NOT NULL,
             FOREIGN KEY(student_id) REFERENCES students(student_id) ON DELETE CASCADE
         );
@@ -157,6 +158,9 @@ def init_db(conn: sqlite3.Connection) -> None:
         );
         """
     )
+    game_columns = {row["name"] for row in conn.execute("PRAGMA table_info(game_events)").fetchall()}
+    if "elapsed_seconds" not in game_columns:
+        conn.execute("ALTER TABLE game_events ADD COLUMN elapsed_seconds INTEGER DEFAULT 0")
     conn.commit()
 
 
@@ -342,14 +346,15 @@ def add_game_event(
     difficulty: str,
     score: float,
     reward_points: int,
+    elapsed_seconds: int = 0,
 ) -> str:
     event_id = stable_id("game", student_id, game_name, subject, now_iso(), str(random.random()))
     conn.execute(
         """
-        INSERT INTO game_events(event_id, student_id, game_name, subject, difficulty, score, reward_points, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO game_events(event_id, student_id, game_name, subject, difficulty, score, reward_points, elapsed_seconds, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
-        (event_id, student_id, game_name, subject, difficulty, float(score), int(reward_points), now_iso()),
+        (event_id, student_id, game_name, subject, difficulty, float(score), int(reward_points), int(elapsed_seconds), now_iso()),
     )
     if reward_points:
         add_points(conn, student_id, reward_points)

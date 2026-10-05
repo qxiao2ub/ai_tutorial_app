@@ -3,7 +3,7 @@
 **Author:** Anish Khandalkar  
 **Mentor:** Dr. Qingyang Xiao
 
-A Colab-friendly, GitHub-ready Streamlit prototype for a single-lecturer tutorial platform where **Anish** uploads lecture recordings, students watch videos, answer checkpoint quizzes, complete surveys, play reward-based mini-games, sign up for email/SMS updates, and message Anish for lecture help.
+A Colab-friendly, GitHub-ready Streamlit prototype for a single-lecturer tutorial platform where **Anish** uploads lecture recordings, students watch videos, answer checkpoint quizzes, complete surveys, play timed reward-based mini-games, and sign up for email/SMS updates.
 
 This repository is designed as a working educational MVP, not a production-grade LMS. Before using it with real students, add proper authentication, role-based permissions, consent workflows, encrypted storage for personal information, institutional privacy review, and an approved email/SMS provider.
 
@@ -33,7 +33,7 @@ If the counter service is temporarily unreachable, the app falls back to a visib
 - Survey templates and response capture
 - Mini-games with reward points and badges
 - Email/SMS signup storage for future communications
-- Student-to-Anish messaging with AI-assisted draft hints
+- Timed mini-game quiz attempts with persistent elapsed-time records
 - SQLite database for local/Colab development
 - AI analytics for:
   - watch time and engagement
@@ -118,7 +118,7 @@ ai_tutorial_app/
 
 ## Data and privacy notes
 
-The app can collect names, emails, phone numbers, watch time, quiz answers, survey feedback, game scores, and messages. Treat all of this as sensitive educational data. The prototype includes a consent checkbox and stores data locally, but a real deployment should include:
+The app can collect names, emails, phone numbers, quiz answers, survey feedback, game scores, and timed mini-game durations. Treat all of this as sensitive educational data. The prototype includes a consent checkbox and stores data locally, but a real deployment should include:
 
 - FERPA/GDPR/COPPA/organizational compliance review as applicable
 - Clear consent language and data retention policies

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import json
+import time
 from pathlib import Path
 
 import pandas as pd
@@ -11,7 +11,6 @@ from src.ai_models import (
     build_engagement_dataset,
     strength_weakness_summary,
     student_recommendations,
-    suggest_reply,
     train_all_models,
 )
 from src.bandit import bandit_summary, choose_arm, ensure_bandit_arms, update_arm
@@ -19,7 +18,6 @@ from src.config import ADMIN_PASSCODE, APP_NAME, LECTURER_NAME
 from src.database import (
     add_game_event,
     add_lecture,
-    add_message,
     add_quiz,
     add_quiz_attempt,
     add_signup,
@@ -33,10 +31,8 @@ from src.database import (
     get_surveys,
     init_db,
     list_lectures,
-    log_watch_event,
     save_uploaded_file,
     seed_demo_data,
-    update_message_status,
 )
 from src.utils import from_json
 from src.usage_counter import increment_visit
@@ -95,7 +91,7 @@ with st.sidebar:
         ["Student", f"{LECTURER_NAME} Lecturer/Admin", "AI Analytics Lab", "Project README"],
     )
     st.divider()
-    st.caption("Deep-space dashboard UI adapted from the supplied tutoring UI package. Usage counter is external/no-database and counts one visit per Streamlit session. Prototype note: replace demo passcode, SQLite, and manual video tracking before real deployment.")
+    st.caption("Deep-space dashboard UI adapted from the supplied tutoring UI package. Usage counter is external/no-database and counts one visit per Streamlit session. Prototype note: replace demo passcode and SQLite before real deployment.")
 
 
 def student_login() -> str | None:
@@ -108,7 +104,7 @@ def student_login() -> str | None:
         with col2:
             phone = st.text_input("Phone for future text updates (optional)")
             consent = st.checkbox(
-                "I consent to local prototype storage of my watch time, quiz answers, survey responses, game points, and messages.",
+                "I consent to local prototype storage of my quiz answers, survey responses, and game points.",
                 value=True,
             )
         submitted = st.form_submit_button("Enter app")
@@ -159,18 +155,6 @@ def render_video_and_quizzes(student_id: str) -> None:
     else:
         st.info("No video file is attached to this demo lecture yet. Anish can upload one in the admin Content Studio.")
 
-    st.markdown("#### Watch-time logger")
-    st.caption("Streamlit's built-in video player does not expose exact playback telemetry. This MVP logs self-reported watched minutes. A production version should use a custom video player component for exact play/pause/seek events.")
-    col1, col2, col3 = st.columns([1, 1, 2])
-    with col1:
-        watched_minutes = st.number_input("Minutes watched now", min_value=0.0, max_value=600.0, value=10.0, step=1.0)
-    with col2:
-        elapsed_minutes = st.number_input("Video position reached", min_value=0.0, max_value=600.0, value=min(float(row["duration_minutes"] or 0), 10.0), step=1.0)
-    with col3:
-        if st.button("Log watch time", use_container_width=True):
-            log_watch_event(conn, student_id, lecture_id, "manual_log", int(elapsed_minutes * 60), int(watched_minutes * 60))
-            st.success("Watch time logged.")
-
     st.markdown("#### Checkpoint quizzes")
     quizzes = get_quizzes(conn, lecture_id)
     if quizzes.empty:
@@ -208,22 +192,85 @@ def render_mini_games(student_id: str) -> None:
     if quizzes.empty:
         st.info("No quiz bank is available for this subject yet.")
         return
-    quiz = quizzes.sample(1, random_state=None).iloc[0]
+
+    selection_key = f"mini_game_selection:{game}:{subject}:{difficulty}"
+    available_ids = set(quizzes["quiz_id"].tolist())
+    saved_quiz_id = st.session_state.get(selection_key)
+    if saved_quiz_id in available_ids:
+        quiz = quizzes[quizzes["quiz_id"] == saved_quiz_id].iloc[0]
+    else:
+        quiz = quizzes.sample(1, random_state=None).iloc[0]
+        st.session_state[selection_key] = quiz["quiz_id"]
+
     options = from_json(quiz["options_json"], [])
+    game_key = f"{game}:{subject}:{difficulty}:{quiz['quiz_id']}"
+
+    if st.session_state.get("active_game_key") != game_key:
+        st.session_state.pop("game_started_at", None)
+        st.session_state.pop("game_finished", None)
+        st.session_state["active_game_key"] = game_key
+
     st.write(f"**{game}:** {quiz['question']}")
-    choice = st.radio("Your answer", options, key=f"game_{game}_{quiz['quiz_id']}_{difficulty}")
-    if st.button("Submit game answer"):
-        correct = choice == quiz["correct_answer"]
-        base = {"easy": 8, "medium": 12, "hard": 18}[difficulty]
-        reward = base if correct else 3
-        score = 100 if correct else 20
-        add_game_event(conn, student_id, game, subject, difficulty, score=score, reward_points=reward)
-        update_arm(conn, f"{subject}:{'flashcard_review' if game == 'Flashcard Recall' else 'speed_round' if game == 'Speed Round' else 'quiz_' + difficulty}", 1.0 if correct else 0.2)
-        if correct:
-            st.success(f"Correct. +{reward} points.")
-        else:
-            st.warning(f"Review needed. Correct answer: {quiz['correct_answer']}. +{reward} effort points.")
-        st.caption(quiz["explanation"])
+
+    if "game_started_at" not in st.session_state and not st.session_state.get("game_finished", False):
+        if st.button("Start this quiz", use_container_width=True):
+            st.session_state["game_started_at"] = time.time()
+            st.session_state["game_finished"] = False
+            st.rerun()
+        st.caption("Start the quiz to begin the timer. The timer measures how long you spend on this activity.")
+        return
+
+    if st.session_state.get("game_finished", False):
+        st.success("Quiz completed. Start another round to record a new timed attempt.")
+        if st.button("Start another quiz", use_container_width=True):
+            st.session_state.pop("game_finished", None)
+            st.session_state.pop("game_started_at", None)
+            st.session_state.pop(selection_key, None)
+            st.rerun()
+        return
+
+    @st.fragment(run_every="1s")
+    def timed_game_fragment():
+        started_at = st.session_state.get("game_started_at")
+        if started_at is None:
+            return
+        elapsed = max(0, int(time.time() - started_at))
+        mins, secs = divmod(elapsed, 60)
+        st.metric("Quiz timer", f"{mins:02d}:{secs:02d}")
+        choice = st.radio("Your answer", options, key=f"game_answer_{game_key}")
+        if st.button("Submit game answer", use_container_width=True, key=f"submit_{game_key}"):
+            final_elapsed = max(0, int(time.time() - started_at))
+            correct = choice == quiz["correct_answer"]
+            base = {"easy": 8, "medium": 12, "hard": 18}[difficulty]
+            speed_bonus = max(0, 10 - final_elapsed // 30)
+            reward = base + (speed_bonus if correct else 0)
+            score = 100 if correct else 20
+            add_game_event(
+                conn,
+                student_id,
+                game,
+                subject,
+                difficulty,
+                score=score,
+                reward_points=reward,
+                elapsed_seconds=final_elapsed,
+            )
+            update_arm(
+                conn,
+                f"{subject}:{'flashcard_review' if game == 'Flashcard Recall' else 'speed_round' if game == 'Speed Round' else 'quiz_' + difficulty}",
+                1.0 if correct else 0.2,
+            )
+            st.session_state["game_finished"] = True
+            st.session_state["game_last_elapsed"] = final_elapsed
+            st.session_state.pop("game_started_at", None)
+            if correct:
+                st.success(f"Correct. +{reward} points. Time: {final_elapsed} seconds.")
+            else:
+                st.warning(f"Review needed. Correct answer: {quiz['correct_answer']}. +{reward} effort points. Time: {final_elapsed} seconds.")
+            st.caption(quiz["explanation"])
+            st.rerun()
+
+    timed_game_fragment()
 
 
 def render_surveys(student_id: str) -> None:
@@ -246,26 +293,6 @@ def render_surveys(student_id: str) -> None:
     if submitted:
         add_survey_response(conn, student_id, survey["survey_id"], row["lecture_id"], responses, satisfaction_score=float(satisfaction))
         st.success("Thanks. Your feedback will help improve future sessions.")
-
-
-def render_messages(student_id: str) -> None:
-    st.subheader(f"Message {LECTURER_NAME}")
-    row, _ = select_lecture("Optional lecture context")
-    lecture_id = row["lecture_id"] if row is not None else None
-    with st.form("message_form"):
-        subject = st.text_input("Message subject", value="Question about the lecture")
-        body = st.text_area("Your question or request for explanation")
-        submitted = st.form_submit_button(f"Send to {LECTURER_NAME}")
-    if body.strip():
-        st.caption("AI draft hint for Anish")
-        st.write(suggest_reply(conn, body, lecture_id))
-    if submitted:
-        if not body.strip():
-            st.error("Please write a message first.")
-        else:
-            hint = suggest_reply(conn, body, lecture_id)
-            add_message(conn, student_id, lecture_id, subject, body, ai_hint=hint)
-            st.success("Message sent to the lecturer/admin inbox.")
 
 
 def render_signup(student_id: str | None = None) -> None:
@@ -291,7 +318,7 @@ def student_workspace() -> None:
     render_workspace_banner(
         "Student Learning Path",
         "Your adaptive learning dashboard",
-        "Move between Anish's lectures, checkpoint quizzes, mini-games, surveys, direct messages, and personalized AI recommendations.",
+        "Move between Anish's lectures, checkpoint quizzes, mini-games, surveys, signup options, and personalized AI recommendations.",
     )
     student_id = student_login()
     if not student_id:
@@ -306,7 +333,7 @@ def student_workspace() -> None:
             st.markdown("#### Personalized suggestions")
             st.dataframe(recs, use_container_width=True, hide_index=True)
     with col2:
-        tabs = st.tabs(["Watch + quizzes", "Mini-games", "Surveys", f"Message {LECTURER_NAME}", "Signup"])
+        tabs = st.tabs(["Watch + quizzes", "Mini-games", "Surveys", "Signup"])
         with tabs[0]:
             render_video_and_quizzes(student_id)
         with tabs[1]:
@@ -314,8 +341,6 @@ def student_workspace() -> None:
         with tabs[2]:
             render_surveys(student_id)
         with tabs[3]:
-            render_messages(student_id)
-        with tabs[4]:
             render_signup(student_id)
 
 
@@ -401,33 +426,6 @@ def admin_content_studio() -> None:
             st.success("Survey saved.")
 
 
-def admin_messages() -> None:
-    st.subheader("Student messages")
-    messages = get_df(
-        conn,
-        """
-        SELECT m.message_id, m.created_at, s.name, l.title AS lecture, m.subject, m.body, m.ai_hint, m.status
-        FROM messages m
-        JOIN students s ON s.student_id = m.student_id
-        LEFT JOIN lectures l ON l.lecture_id = m.lecture_id
-        ORDER BY m.created_at DESC
-        """,
-    )
-    if messages.empty:
-        st.info("No messages yet.")
-        return
-    for _, msg in messages.iterrows():
-        with st.expander(f"{msg['status'].upper()} | {msg['name']} | {msg['subject']}"):
-            st.caption(f"Lecture: {msg['lecture'] or 'General'} | Created: {msg['created_at']}")
-            st.write(msg["body"])
-            st.markdown("**AI hint for Anish**")
-            st.write(msg["ai_hint"] or "No hint available.")
-            new_status = st.selectbox("Status", ["new", "in_review", "responded", "closed"], index=["new", "in_review", "responded", "closed"].index(msg["status"]), key=f"status_{msg['message_id']}")
-            if st.button("Update status", key=f"update_{msg['message_id']}"):
-                update_message_status(conn, msg["message_id"], new_status)
-                st.success("Status updated. Refresh to see changes.")
-
-
 def admin_communications() -> None:
     st.subheader("Future communications list")
     signups = get_df(conn, "SELECT name, email, phone, email_opt_in, sms_opt_in, notes, created_at FROM signups ORDER BY created_at DESC")
@@ -476,22 +474,20 @@ def admin_workspace() -> None:
     render_workspace_banner(
         "Lecturer Command Center",
         f"{LECTURER_NAME} Lecturer / Admin workspace",
-        "Upload lecture recordings, build checkpoint assessments, review student messages, manage communications, and monitor learning analytics.",
+        "Upload lecture recordings, build checkpoint assessments, manage communications, and monitor learning analytics.",
     )
     passcode = st.text_input("Admin passcode", type="password")
     if passcode != ADMIN_PASSCODE:
         st.info("Enter the admin passcode. Demo default is `change-me`; set ANISH_ADMIN_PASSCODE before sharing.")
         return
-    tabs = st.tabs(["Dashboard", "Content Studio", "Messages", "Communications", "AI Insights"])
+    tabs = st.tabs(["Dashboard", "Content Studio", "Communications", "AI Insights"])
     with tabs[0]:
         admin_dashboard()
     with tabs[1]:
         admin_content_studio()
     with tabs[2]:
-        admin_messages()
-    with tabs[3]:
         admin_communications()
-    with tabs[4]:
+    with tabs[3]:
         admin_ai_insights()
 
 

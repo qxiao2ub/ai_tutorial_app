@@ -15,6 +15,8 @@ def test_database_and_models_smoke():
         assert not dataset.empty
         results = train_all_models(dataset)
         assert "mastery_dnn_mlp" in results
+        columns = {row["name"] for row in conn.execute("PRAGMA table_info(game_events)").fetchall()}
+        assert "elapsed_seconds" in columns
         conn.close()
 
 
@@ -34,3 +36,16 @@ def test_usage_counter_floor_and_value_parsing(monkeypatch):
     count, remote_ok = usage_counter.increment_visit()
     assert count == 17
     assert remote_ok is True
+
+
+def test_streamlit_revision_requirements():
+    from pathlib import Path
+
+    app = Path(__file__).resolve().parents[1] / "streamlit_app.py"
+    text = app.read_text(encoding="utf-8")
+    assert "Watch-time logger" not in text
+    assert "Log watch time" not in text
+    assert "Message Anish" not in text
+    assert "Start this quiz" in text
+    assert 'st.fragment(run_every="1s")' in text
+    assert "elapsed_seconds=final_elapsed" in text
