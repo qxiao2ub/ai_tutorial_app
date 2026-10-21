@@ -3,6 +3,8 @@
 **Author:** Anish Khandalkar  
 **Mentor:** Dr. Qingyang Xiao
 
+**Official author tutorial:** https://youtu.be/rsp7wmfgliQ  
+
 A Colab-friendly, GitHub-ready Streamlit prototype for a single-lecturer tutorial platform where **Anish** uploads lecture recordings, students watch videos, answer checkpoint quizzes, complete surveys, play timed reward-based mini-games, and sign up for email/SMS updates.
 
 This repository is designed as a working educational MVP, not a production-grade LMS. Before using it with real students, add proper authentication, role-based permissions, consent workflows, encrypted storage for personal information, institutional privacy review, and an approved email/SMS provider.
@@ -28,6 +30,7 @@ If the counter service is temporarily unreachable, the app falls back to a visib
 ## What is included
 
 - Streamlit app with student and lecturer/admin modes
+- Official author tutorial video embedded in the student Watch + quizzes page and linked from the sidebar
 - Lecture upload and video playback
 - Quiz checkpoints tied to lecture timestamps
 - Survey templates and response capture

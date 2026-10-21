@@ -47,6 +47,8 @@ from src.ui_theme import (
 
 st.set_page_config(page_title=APP_NAME, page_icon="🎓", layout="wide")
 
+AUTHOR_TUTORIAL_URL = "https://youtu.be/rsp7wmfgliQ"
+
 
 @st.cache_resource
 def get_conn():
@@ -90,6 +92,9 @@ with st.sidebar:
         "Choose a workspace",
         ["Student", f"{LECTURER_NAME} Lecturer/Admin", "AI Analytics Lab", "Project README"],
     )
+    st.markdown("### 🎬 Author Tutorial")
+    st.link_button("Watch Anish's Tutorial", AUTHOR_TUTORIAL_URL, use_container_width=True)
+    st.caption("Official tutorial provided by author Anish Khandalkar.")
     st.divider()
     st.caption("Deep-space dashboard UI adapted from the supplied tutoring UI package. Usage counter is external/no-database and counts one visit per Streamlit session. Prototype note: replace demo passcode and SQLite before real deployment.")
 
@@ -142,6 +147,12 @@ def select_lecture(label: str = "Choose a lecture"):
 
 
 def render_video_and_quizzes(student_id: str) -> None:
+    st.markdown("### 🎬 Tutorial from Anish Khandalkar")
+    st.caption("Official tutorial video provided by the author.")
+    st.video(AUTHOR_TUTORIAL_URL)
+    st.link_button("Open tutorial on YouTube", AUTHOR_TUTORIAL_URL)
+    st.divider()
+
     row, _ = select_lecture()
     if row is None:
         return
